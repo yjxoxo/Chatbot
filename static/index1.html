@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KDX 데이터 추천 챗봇</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .chat-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        input[type="text"] {
+            width: calc(100% - 22px);
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        button {
+            width: calc(50% - 10px);
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            background-color: #FF9966;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+
+        button#cancelButton {
+            background-color: #d9534f;
+            margin-left: 10px;
+        }
+
+        button:hover {
+            background-color: #FF9966;
+        }
+
+        #cancelButton:hover {
+            background-color: #c9302c;
+        }
+
+        #response {
+            margin-top: 20px;
+            font-size: 18px;
+            color: #333;
+        }
+
+        h2 {
+            font-size: 20px;
+            margin-top: 30px;
+            color: #330000;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        li {
+            background: #f9f9f9;
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+
+        .spinner {
+            margin: 20px auto;
+            width: 50px;
+            height: 50px;
+            border: 5px solid lightgrey;
+            border-top: 5px solid #FF9966;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+		.button-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <h1>어떤 데이터가 궁금하세요?</h1>
+        <input type="text" id="question" placeholder="질문 입력" onkeydown="if(event.key === 'Enter') askQuestion()">
+        <div style="display: flex; justify-content: space-between;">
+            <button id="askButton" onclick="askQuestion()">질문하기</button>
+            <button id="cancelButton" onclick="cancelRequest()" style="display: none;">취소</button>
+        </div>
+        <div id="loading-spinner" class="spinner" style="display: none;">
+            <div id="progress-rate">0%</div>
+        </div>
+        <p id="response"></p>
+        <ul id="recommendations"></ul>
+    </div>
+
+    <script>
+        let controller = new AbortController();
+
+        async function askQuestion() {
+            const question = document.getElementById("question").value;
+            const responseElement = document.getElementById("response");
+            const recommendationsList = document.getElementById("recommendations");
+            const loadingSpinner = document.getElementById("loading-spinner");
+            const askButton = document.getElementById("askButton");
+            const cancelButton = document.getElementById("cancelButton");
+            const progressRate = document.getElementById("progress-rate");
+
+            responseElement.innerText = "데이터 찾는 중...";
+            recommendationsList.innerHTML = "";
+            loadingSpinner.style.display = "block";
+            askButton.style.display = "none";
+            cancelButton.style.display = "inline-block";
+
+            controller = new AbortController();
+            const signal = controller.signal;
+
+            try {
+                const response = await fetch('/chatbot', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ question: question }),
+                    signal: signal
+                });
+
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+
+                const data = await response.json();
+
+                responseElement.innerText = `Diru: ${data.intent}\nResponse Time: ${data.response_time.toFixed(2)} seconds`;
+
+                if (data.id !== 'predefined') {
+                    recommendationsList.innerHTML = `
+                        <h2>Recommended Products</h2>
+                        <li>Title: ${data.title}<br><br>
+                        ${data.description}</li>
+                    `;
+                } else {
+                    recommendationsList.innerHTML = "";  // Clear recommendations for predefined responses
+                }
+
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    responseElement.innerText = "Request cancelled.";
+                } else {
+                    responseElement.innerText = "Error occurred while fetching recommendations. Please try again later.";
+                    console.error('Error:', error);
+                }
+            } finally {
+                loadingSpinner.style.display = "none";
+                askButton.style.display = "inline-block";
+                cancelButton.style.display = "none";
+                progressRate.innerText = "0%";  // Reset progress rate
+            }
+        }
+
+        function cancelRequest() {
+            controller.abort();
+        }
+
+        function updateProgressRate(rate) {
+            const progressRate = document.getElementById("progress-rate");
+            progressRate.innerText = `${rate}%`;
+        }
+
+        // Simulate progress rate for demo purposes
+        setInterval(() => {
+            const loadingSpinner = document.getElementById("loading-spinner");
+            if (loadingSpinner.style.display === "block") {
+                let currentRate = parseInt(document.getElementById("progress-rate").innerText);
+                if (currentRate < 100) {
+                    updateProgressRate(currentRate + 10);
+                } else {
+                    updateProgressRate(0);
+                }
+            }
+        }, 500);
+
+    </script>
+</body>
+</html>
