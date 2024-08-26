@@ -1,11 +1,11 @@
 import streamlit as st
 from langserve import RemoteRunnable
 
-st.title('LangChain ±â¹İ µ¥ÀÌÅÍ ÃßÃµ ¾ÖÇÃ¸®ÄÉÀÌ¼Ç')
+st.title('LangChain ê¸°ë°˜ ë°ì´í„° ì¶”ì²œ ì• í”Œë¦¬ì¼€ì´ì…˜')
 
-user_input = st.text_input("¾î¶² µ¥ÀÌÅÍ°¡ ±Ã±İÇÏ¼¼¿ä? ¿¹)À¯µ¿ÀÎ±¸ µ¥ÀÌÅÍ")
+user_input = st.text_input("ì–´ë–¤ ë°ì´í„°ê°€ ê¶ê¸ˆí•˜ì„¸ìš”? ì˜ˆ)ìœ ë™ì¸êµ¬ ë°ì´í„°")
 
-if st.button('Àü¼Û'):
+if st.button('ì „ì†¡'):
     remote = RemoteRunnable(url="http://localhost:8000/chat")
     result = remote.invoke({"input": user_input})
-    st.write("ÀÀ´ä:", result)
+    st.write("ì‘ë‹µ:", result)
